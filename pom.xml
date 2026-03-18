@@ -20,12 +20,6 @@
 
     <modules>
         <module>common-lib</module>
-        <module>api-gateway</module>
-        <module>project-service</module>
-        <module>task-service</module>
-        <module>comment-service</module>
-        <module>notification-service</module>
-        <module>audit-service</module>
         <module>monolith-service</module>
     </modules>
 

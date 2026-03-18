@@ -8,129 +8,30 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-      POSTGRES_MULTIPLE_DATABASES: authdb,projectdb,taskdb,commentdb,notificationdb,auditdb
+      POSTGRES_DB: projectdb
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Auth Service (from auth-src)
-  auth-service:
+  # Monolith Service (Consolidated Backend)
+  monolith-service:
     build:
-      context: ../auth-src
-      dockerfile: Dockerfile
-    container_name: pm-auth
+      context: .
+      dockerfile: monolith-service/Dockerfile
+    container_name: pm-monolith
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_AUTH:-jdbc:postgresql://postgres:5432/authdb}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/projectdb}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123456}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # API Gateway
-  api-gateway:
-    build:
-      context: .
-      dockerfile: api-gateway/Dockerfile
-    container_name: pm-gateway
-    ports:
-      - "8090:8090"
-    environment:
-      AUTH_SERVICE_URI: http://auth-service:8080
-      PROJECT_SERVICE_URI: http://project-service:8081
-      TASK_SERVICE_URI: http://task-service:8082
-      COMMENT_SERVICE_URI: http://comment-service:8083
-      NOTIFICATION_SERVICE_URI: http://notification-service:8084
-      NOTIFICATION_WS_URI: ws://notification-service:8084
-      AUDIT_SERVICE_URI: http://audit-service:8085
-    depends_on:
-      - auth-service
-
-  # Project Service
-  project-service:
-    build:
-      context: .
-      dockerfile: project-service/Dockerfile
-    container_name: pm-project
-    ports:
-      - "8081:8081"
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_PROJECT:-jdbc:postgresql://postgres:5432/projectdb}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123456}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Task Service
-  task-service:
-    build:
-      context: .
-      dockerfile: task-service/Dockerfile
-    container_name: pm-task
-    ports:
-      - "8082:8082"
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_TASK:-jdbc:postgresql://postgres:5432/taskdb}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123456}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Comment Service
-  comment-service:
-    build:
-      context: .
-      dockerfile: comment-service/Dockerfile
-    container_name: pm-comment
-    ports:
-      - "8083:8083"
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_COMMENT:-jdbc:postgresql://postgres:5432/commentdb}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123456}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Notification Service
-  notification-service:
-    build:
-      context: .
-      dockerfile: notification-service/Dockerfile
-    container_name: pm-notification
-    ports:
-      - "8084:8084"
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_NOTIFICATION:-jdbc:postgresql://postgres:5432/notificationdb}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123456}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Audit Service
-  audit-service:
-    build:
-      context: .
-      dockerfile: audit-service/Dockerfile
-    container_name: pm-audit
-    ports:
-      - "8085:8085"
-    environment:
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL_AUDIT:-jdbc:postgresql://postgres:5432/auditdb}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-123456}
+      AUTH_SERVICE_URI: https://pm-auth-service.onrender.com
     depends_on:
       postgres:
         condition: service_healthy
