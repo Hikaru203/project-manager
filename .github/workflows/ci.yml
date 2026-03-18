@@ -1,10 +1,16 @@
-name: ProjectFlow CI
+name: ProjectFlow CI/CD
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   backend-build:
@@ -23,8 +29,8 @@ jobs:
       - name: Build and Package with Maven
         run: mvn clean package -DskipTests
 
-  frontend-build:
-    name: Build Frontend (Next.js)
+  frontend-build-and-deploy:
+    name: Build & Deploy Frontend (Next.js)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,3 +49,18 @@ jobs:
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+
+      - name: Setup Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'frontend/out'
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: deployment
+        uses: actions/deploy-pages@v4
