@@ -1,11 +1,24 @@
 import axios from 'axios';
 
-const API_BASE = (typeof window !== 'undefined' && (window as any)._env_?.API_URL) || 
-                 process.env.NEXT_PUBLIC_API_URL || 
-                 'http://localhost:8090';
+const AUTH_BASE = (typeof window !== 'undefined' && (window as any)._env_?.AUTH_URL) || 
+                  process.env.NEXT_PUBLIC_AUTH_URL || 
+                  'http://localhost:8080';
 
+const RESOURCE_BASE = (typeof window !== 'undefined' && (window as any)._env_?.API_URL) || 
+                    process.env.NEXT_PUBLIC_API_URL || 
+                    'http://localhost:8081';
+
+// Instance for Resources (Projects, Tasks, etc.)
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: RESOURCE_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Instance for Auth
+const authApiInstance = axios.create({
+  baseURL: AUTH_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -40,9 +53,9 @@ api.interceptors.response.use(
 // Auth
 export const authApi = {
   login: (tenantSlug: string, username: string, password: string, totpCode: string) =>
-    api.post('/api/v1/auth/login', { tenantSlug, username, password, totpCode }),
+    authApiInstance.post('/api/v1/auth/login', { tenantSlug, username, password, totpCode }),
   refresh: (refreshToken: string) =>
-    api.post('/api/v1/auth/refresh', { refreshToken }),
+    authApiInstance.post('/api/v1/auth/refresh', { refreshToken }),
 };
 
 // Projects

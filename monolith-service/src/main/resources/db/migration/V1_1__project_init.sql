@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -15,10 +15,10 @@ CREATE TABLE projects (
     UNIQUE(tenant_id, key)
 );
 
-CREATE INDEX idx_projects_tenant ON projects(tenant_id);
-CREATE INDEX idx_projects_owner ON projects(owner_id);
+CREATE INDEX IF NOT EXISTS idx_projects_tenant ON projects(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_id);
 
-CREATE TABLE project_members (
+CREATE TABLE IF NOT EXISTS project_members (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id UUID NOT NULL,
@@ -28,5 +28,5 @@ CREATE TABLE project_members (
     UNIQUE(project_id, user_id)
 );
 
-CREATE INDEX idx_pm_project ON project_members(project_id);
-CREATE INDEX idx_pm_user ON project_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_pm_project ON project_members(project_id);
+CREATE INDEX IF NOT EXISTS idx_pm_user ON project_members(user_id);

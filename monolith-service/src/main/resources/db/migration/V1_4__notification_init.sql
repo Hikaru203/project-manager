@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL,
     user_id UUID NOT NULL,
@@ -13,6 +13,6 @@ CREATE TABLE notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
-CREATE INDEX idx_notifications_tenant ON notifications(tenant_id);
-CREATE INDEX idx_notifications_created ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);

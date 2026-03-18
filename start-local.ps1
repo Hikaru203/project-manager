@@ -1,4 +1,4 @@
-# Script to build and run all microservices locally using Maven
+# Script to build and run all services locally using Maven
 # Each service will open in a new PowerShell window so you can easily view its logs
 
 Write-Host "===============================================" -ForegroundColor Cyan
@@ -75,17 +75,12 @@ Write-Host "Building auth-src..."
 mvn clean install -DskipTests
 Set-Location -Path "..\project-manager"
 
-# Step 3: Start Microservices
-Write-Host "`n[3/4] Starting Microservices in separate windows..." -ForegroundColor Yellow
+# Step 3: Start Services
+Write-Host "`n[3/4] Starting Services in separate windows..." -ForegroundColor Yellow
 
 $services = @(
     "auth-service;..\auth-src;8080",
-    "api-gateway;.\api-gateway;8090",
-    "project-service;.\project-service;8081",
-    "task-service;.\task-service;8082",
-    "comment-service;.\comment-service;8083",
-    "notification-service;.\notification-service;8084",
-    "audit-service;.\audit-service;8085"
+    "monolith-service;.\monolith-service;8081"
 )
 
 foreach ($svc in $services) {
@@ -110,9 +105,9 @@ if (-not (Test-Path "node_modules")) {
 
 Write-Host "`n===============================================" -ForegroundColor Green
 Write-Host "  System is starting up locally!" -ForegroundColor Green
-Write-Host "  Please wait for the microservice windows to finish loading." -ForegroundColor Green
-Write-Host "  Frontend   : http://localhost:3000" -ForegroundColor Green
-Write-Host "  API Gateway: http://localhost:8090" -ForegroundColor Green
+Write-Host "  Please wait for the service windows to finish loading." -ForegroundColor Green
+Write-Host "  Frontend    : http://localhost:3000" -ForegroundColor Green
+Write-Host "  Monolith API: http://localhost:8081" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
 Write-Host "`nPress Ctrl+C in this main window to stop the Frontend Server." -ForegroundColor Gray
 Write-Host "To stop the backend services, just close their respective PowerShell windows." -ForegroundColor Gray

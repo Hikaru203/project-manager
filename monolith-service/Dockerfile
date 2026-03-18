@@ -20,7 +20,7 @@ USER appuser
 COPY --from=build /app/monolith-service/target/monolith-service-*.jar app.jar
 COPY --from=build /app/monolith-service/src/main/resources/keys/ keys/
 
-EXPOSE 8080
+EXPOSE 8081
 
 # RAM Optimization for Render Free (512MB)
 ENV JAVA_OPTS="-Xms256m -Xmx400m -XX:+UseG1GC"

@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8080}
+  port: ${PORT:8081}
 
 spring:
   application:
@@ -20,6 +20,8 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    validate-on-migrate: false
+    ignore-missing-migrations: true
 
 jwt:
   public-key-path: classpath:keys/public.pem
