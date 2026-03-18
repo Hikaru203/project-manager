@@ -1,0 +1,73 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        # Auth Service (from auth-src)
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URI:http://localhost:8080}
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/users/**,/api/v1/roles/**,/api/v1/api-keys/**
+        # Project Service
+        - id: project-service
+          uri: ${PROJECT_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/projects/**
+        # Task Service
+        - id: task-service
+          uri: ${TASK_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/tasks/**,/api/v1/labels/**
+        # Comment Service
+        - id: comment-service
+          uri: ${COMMENT_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/comments/**
+        # Notification Service
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URI:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/notifications/**
+        # Notification WebSocket
+        - id: notification-ws
+          uri: ${NOTIFICATION_WS_URI:ws://localhost:8084}
+          predicates:
+            - Path=/ws/**
+        # Audit Service
+        - id: audit-service
+          uri: ${AUDIT_SERVICE_URI:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/audit/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

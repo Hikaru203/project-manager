@@ -1,0 +1,42 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+.metadata/
+bin/
+tmp/
+*.log
+
+# Node.js
+node_modules/
+dist/
+.next/
+out/
+build/
+.env
+.env.local
+.env.production
+.env.development.local
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+*.iml
+
+# Local Portable JDK
+.jdk21/
+
+# Docker
+.docker/
+*data/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
