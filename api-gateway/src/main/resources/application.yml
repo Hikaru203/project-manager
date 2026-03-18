@@ -12,6 +12,7 @@ spring:
             allowedOrigins:
               - "http://localhost:3000"
               - "http://localhost:5173"
+              - "https://hikaru203.github.io"
             allowedMethods:
               - GET
               - POST
@@ -25,7 +26,7 @@ spring:
       routes:
         # Auth Service (from auth-src)
         - id: auth-service
-          uri: ${AUTH_SERVICE_URI:http://localhost:8080}
+          uri: ${AUTH_SERVICE_URI:https://pm-auth-service.onrender.com}
           predicates:
             - Path=/api/v1/auth/**,/api/v1/users/**,/api/v1/roles/**,/api/v1/api-keys/**
         # Project Service

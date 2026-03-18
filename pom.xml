@@ -26,6 +26,7 @@
         <module>comment-service</module>
         <module>notification-service</module>
         <module>audit-service</module>
+        <module>monolith-service</module>
     </modules>
 
     <properties>
