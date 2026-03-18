@@ -81,13 +81,14 @@ docker-compose up --build
 #### A. Backend (Monolith & Auth) -> [Render](https://render.com)
 1. **Tạo Web Service**: Kết nối với GitHub của bạn.
 2. **Cấu hình Monolith**:
-   - **Build Command**: `mvn clean package -DskipTests`
-   - **Start Command**: `java -jar monolith-service/target/monolith-service-1.0.0.jar`
+   - **Environment**: `Docker`
+   - **Root Directory**: Để trống (Mặc định là thư mục gốc).
+   - **Dockerfile Path**: `monolith-service/Dockerfile`
    - **Environment Variables**:
      - `PORT`: 8081
-     - `SPRING_DATASOURCE_URL`: (Render Postgres URL)
+     - `SPRING_DATASOURCE_URL`: (Render Postgres URL, ví dụ chứa user, pass, dbname)
      - `ALLOWED_ORIGINS`: (URL Vercel của bạn)
-3. **Cấu hình Auth**: Tương tự như Monolith nhưng dùng project `auth-src`.
+3. **Cấu hình Auth**: Tương tự như Monolith nhưng dùng project `auth-src` (hoặc cấu hình Dockerfile trỏ tới file Dockerfile của Auth).
 
 #### B. Frontend -> [Vercel](https://vercel.com)
 1. **Tạo Project**: Chọn thư mục `frontend`.
