@@ -85,7 +85,7 @@ export default function ProjectsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * i }}
           >
-            <Link href={`/dashboard/projects/${project.id}`} className="block glass-card p-5 h-full">
+            <Link href={`/dashboard/projects/board?id=${project.id}`} className="block glass-card p-5 h-full">
               <div className="flex items-center gap-3 mb-4">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-base font-bold text-white"
