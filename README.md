@@ -25,7 +25,7 @@ graph TD
         TS[Task Module]
         CS[Comment Module]
         NS[Notification Module]
-        AS[Audit Module]
+        AS[Audit Module - Activity Log]
     end
 
     subgraph Storage [PostgreSQL Database]
@@ -50,7 +50,10 @@ graph TD
 - **Backend**: Spring Boot 3.2, Java 21, Spring Security (JWT RS256).
 - **Frontend**: Next.js 15 (App Router), React 19, Zustand, TailwindCSS, Framer Motion.
 - **Dữ liệu**: PostgreSQL 16, Flyway (Migration).
-- **Giao tiếp**: REST API, WebSocket (STOMP).
+- **Giao tiếp**: REST API, WebSocket (STOMP), Secure API Key Signatures.
+- **Tính năng nổi bật**: 
+  - **Activity Log**: Theo dõi chi tiết mọi thay đổi (tạo task, cập nhật trạng thái, thêm member) với giao diện timeline trực quan.
+  - **Smart Task Status**: Hỗ trợ quy trình Re-open linh hoạt, tự động chuyển trạng thái khi kéo thả.
 - **Triển khai**: Docker & Render (Free Tier Optimized).
 
 ---
