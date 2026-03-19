@@ -27,7 +27,7 @@ const authApiInstance = axios.create({
 // API Key for Auth Service
 const AUTH_API_KEY = (typeof window !== 'undefined' && (window as any)._env_?.AUTH_API_KEY) || 
                      process.env.NEXT_PUBLIC_AUTH_API_KEY || 
-                     '4c1543bdcfd182c3e4d59b322df0922e6598dbe0772083a35a977dd5004c1a0a';
+                     'ak_D2tDO7EycE-VwYJjhhmlm-KzlJJ1Cdq3yC1BTRccuEU2fT_H';
 
 /**
  * Calculates SHA-256 hash of a string using Web Crypto API.

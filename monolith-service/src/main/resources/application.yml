@@ -40,4 +40,4 @@ management:
 app:
   auth:
     base-url: ${AUTH_SERVICE_URL:https://pm-auth-service.onrender.com}
-    api-key: ${AUTH_API_KEY:4c1543bdcfd182c3e4d59b322df0922e6598dbe0772083a35a977dd5004c1a0a}
+    api-key: ${AUTH_API_KEY:ak_D2tDO7EycE-VwYJjhhmlm-KzlJJ1Cdq3yC1BTRccuEU2fT_H}

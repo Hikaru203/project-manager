@@ -30,7 +30,7 @@ public class AuthUserClient {
     @Value("${app.auth.base-url:http://localhost:8080}")
     private String authBaseUrl;
 
-    @Value("${app.auth.api-key:4c1543bdcfd182c3e4d59b322df0922e6598dbe0772083a35a977dd5004c1a0a}")
+    @Value("${app.auth.api-key:ak_D2tDO7EycE-VwYJjhhmlm-KzlJJ1Cdq3yC1BTRccuEU2fT_H}")
     private String apiKey;
 
     public List<UserResponse> searchUsers(String query) {
