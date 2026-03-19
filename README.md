@@ -1,12 +1,14 @@
-# ProjectFlow - Monolith Backend
+# ProjectFlow - Modern Project Management System
 
-Hệ thống quản lý dự án (Project Management System) hiện đại được thiết kế theo kiến trúc Monolith (hợp nhất từ Microservices), lấy cảm hứng từ Jira và Linear. 
+A modern project management system designed with a Monolith architecture (evolved from microservices), inspired by Jira and Linear.
+
+- [English](README.md) | [Tiếng Việt](README_VI.md) | [中文](README_ZH.md)
 
 ---
 
-## 🏗️ Kiến trúc & Công nghệ
+## 🏗️ Architecture & Technology
 
-### Sơ đồ Kiến trúc Tổng thể (Architecture)
+### Overall Architecture
 
 ```mermaid
 graph TD
@@ -46,8 +48,8 @@ graph TD
     MONO --- DB_P
 ```
 
-### Sơ đồ Dữ liệu (ER Diagram)
-Để hiểu rõ mối quan hệ giữa các thực thể trong hệ thống:
+### Data Model (ER Diagram)
+Understand the relationships between entities in the system:
 
 ```mermaid
 erDiagram
@@ -60,8 +62,8 @@ erDiagram
     AUDIT_LOG }|--|| TASK : "references"
 ```
 
-### Quy trình Thay đổi Trạng thái Task (Sequence)
-Mô tả cách hệ thống xử lý khi người dùng kéo thả hoặc cập nhật trạng thái Task:
+### Task Status Update Flow (Sequence)
+Describes how the system handles task status updates:
 
 ```mermaid
 sequenceDiagram
@@ -70,113 +72,111 @@ sequenceDiagram
     participant AU as Audit Module
     
     FE->>BE: PATCH /api/v1/tasks/{id}/status (New Status)
-    BE->>BE: Kiểm tra Logic Transition (e.g. DONE -> RE_OPEN)
-    alt Hợp lệ
-        BE->>BE: Cập nhật Database
-        BE->>AU: Ghi log Activity (Action: UPDATE_STATUS)
-        AU-->>AU: Lưu vết actor, thời gian, giá trị cũ/mới
+    BE->>BE: Validate Transition Logic (e.g. DONE -> RE_OPEN)
+    alt Valid
+        BE->>BE: Update Database
+        BE->>AU: Create Audit Log (Action: UPDATE_STATUS)
+        AU-->>AU: Records actor, timestamp, old/new values
         BE-->>FE: HTTP 200 OK (Updated Task)
-    else Không hợp lệ
+    else Invalid
         BE-->>FE: HTTP 400 Bad Request
     end
 ```
 
-### Công nghệ sử dụng
+### Technology Stack
 - **Backend**: Spring Boot 3.2, Java 21, Spring Security (JWT RS256).
 - **Frontend**: Next.js 15 (App Router), React 19, Zustand, TailwindCSS, Framer Motion.
-- **Dữ liệu**: PostgreSQL 16, Flyway (Migration).
-- **Giao tiếp**: REST API, WebSocket (STOMP), Secure API Key Signatures.
-- **Tính năng nổi bật**: 
-  - **Activity Log**: Theo dõi chi tiết mọi thay đổi (tạo task, cập nhật trạng thái, thêm member) với giao diện timeline trực quan.
-  - **Smart Task Status**: Hỗ trợ quy trình Re-open linh hoạt, tự động chuyển trạng thái khi kéo thả.
-- **Triển khai**: Docker & Render (Free Tier Optimized).
+- **Data**: PostgreSQL 16, Flyway (Migration).
+- **Communication**: REST API, WebSocket (STOMP), Secure API Key Signatures.
+- **Key Features**: 
+  - **Activity Log**: Tracks every change (task creation, status updates, member additions) with an intuitive timeline interface.
+  - **Smart Task Status**: Supports flexible "Re-open" workflows and automatic status transitions during drag-and-drop.
+- **Deployment**: Docker & Render (Free Tier Optimized).
 
 ---
 
-## 🚀 Hướng dẫn cài đặt & Chạy ứng dụng
+## 🚀 Installation & Getting Started
 
-### 1. Chạy Local (Cho Developer)
+### 1. Running Locally (For Developers)
 1. **Frontend**:
    ```bash
    cd frontend
-   cp .env.example .env.local # Cấu hình API URLs tại đây
+   cp .env.example .env.local # Configure API URLs here
    npm install
    npm run dev
    ```
 2. **Backend (Monolith)**:
    ```bash
    cd monolith-service
-   cp .env.example .env # Cấu hình Database & Auth API Key tại đây
+   cp .env.example .env # Configure Database & Auth API Key here
    mvn clean package -pl monolith-service -am -DskipTests
    java -jar target/monolith-service-1.0.0.jar
    ```
 
-### 2. Chạy bằng Docker
-Hệ thống đã được cấu hình sẵn Docker Compose để chạy toàn bộ môi trường:
+### 2. Running with Docker
+The system is pre-configured with Docker Compose:
 ```powershell
 docker-compose up --build
 ```
 
-### 3. Hướng dẫn Triển khai (Deployment)
+### 3. Deployment Guide
 
 #### A. Backend (Monolith & Auth) -> [Render](https://render.com)
-1. **Tạo Web Service**: Kết nối với GitHub của bạn.
-2. **Cấu hình Monolith**:
+1. **Create Web Service**: Connect your GitHub repository.
+2. **Configure Monolith**:
    - **Environment**: `Docker`
-   - **Root Directory**: Để trống (Mặc định là thư mục gốc).
    - **Dockerfile Path**: `monolith-service/Dockerfile`
    - **Environment Variables**:
      - `PORT`: 8081
-     - `SPRING_DATASOURCE_URL`: (Render Postgres URL, ví dụ chứa user, pass, dbname)
-     - `ALLOWED_ORIGINS`: (URL Vercel của bạn)
-3. **Cấu hình Auth**: Tương tự như Monolith nhưng dùng project `auth-src` (hoặc cấu hình Dockerfile trỏ tới file Dockerfile của Auth).
+     - `SPRING_DATASOURCE_URL`: (Render Postgres URL)
+     - `ALLOWED_ORIGINS`: (Your Vercel URL)
+3. **Configure Auth Service**: Same as above but pointing to the `auth-src` project.
 
 #### B. Frontend -> [Vercel](https://vercel.com)
-1. **Tạo Project**: Chọn thư mục `frontend`.
-2. **Framework Preset**: Next.js.
-3. **Environment Variables**:
+1. **Create Project**: Select the `frontend` folder.
+2. **Environment Variables**:
    - `NEXT_PUBLIC_AUTH_URL`: `https://pm-auth-service.onrender.com`
    - `NEXT_PUBLIC_API_URL`: `https://your-monolith-service.onrender.com`
 
 ---
 
-## 🔐 Lưu ý Quan trọng khi Deploy
-- **CORS**: Luôn đảm bảo `ALLOWED_ORIGINS` trên server khớp với domain frontend.
-- **HTTPS**: Tất cả URL Production phải bắt đầu bằng `https://`.
-- **Database**: Sử dụng PostgreSQL trên Cloud (như Render hoặc Supabase) để dữ liệu không bị mất khi restart service.
+## 🔐 Important Notes for Deployment
+- **CORS**: Ensure `ALLOWED_ORIGINS` on the server matches your frontend domain.
+- **HTTPS**: All Production URLs must use `https://`.
+- **Database**: Use Cloud PostgreSQL (Render/Supabase) to persist data across restarts.
 
 ---
 
-## 📂 Cấu trúc thư mục
+## 📂 Directory Structure
 
-| Thư mục | Chức năng |
+| Folder | Description |
 |---|---|
-| `monolith-service/` | Backend hợp nhất (Project, Task, Comment, Notification, Audit). |
-| `common-lib/` | Thư viện dùng chung (JWT Validator, DTOs, Exceptions). |
-| `frontend/` | Giao diện người dùng Next.js hiện đại. |
+| `monolith-service/` | Unified backend (Project, Task, Comment, Notification, Audit). |
+| `common-lib/` | Shared libraries (JWT Validator, DTOs, Exceptions). |
+| `frontend/` | Modern Next.js user interface. |
 
-### Chi tiết Thư mục Backend (Monolith)
+### Backend Monolith Details
 ```text
 monolith-service/
 ├── src/main/java/com/projectmanager/
-│   ├── project/         # Quản lý Dự án & Member
-│   ├── task/            # Quản lý Task, Status, Labels
-│   ├── comment/         # Trao đổi trong Task
-│   ├── audit/           # Hệ thống Activity Log (Audit)
-│   ├── notification/    # Thông báo (Real-time & DB)
+│   ├── project/         # Project & Member Management
+│   ├── task/            # Task Management, Status, Labels
+│   ├── comment/         # Task Discussion
+│   ├── audit/           # Activity Log System (Audit)
+│   ├── notification/    # Notifications (Real-time & DB)
 │   └── common/          # Security, Exception, Base DTOs
 └── src/main/resources/
-    └── db/migration/    # Lịch sử Database (Flyway)
+    └── db/migration/    # Database History (Flyway)
 ```
 
 ---
 
-## 👩‍💻 Thông tin Tài khoản Mặc định
-- **Tài khoản**: `admin`
-- **Mật khẩu**: `Admin@123`
+## 👩‍💻 Default Credentials
+- **Account**: `admin`
+- **Password**: `Admin@123`
 
 ---
 
-## 🔗 Liên kết Tham khảo
-- **Hệ thống Auth (Gốc)**: [https://github.com/Hikaru203/auth](https://github.com/Hikaru203/auth)
+## 🔗 Reference Links
+- **Auth System (Original)**: [https://github.com/Hikaru203/auth](https://github.com/Hikaru203/auth)
 - **Project Manager Repo**: [https://github.com/Hikaru203/project-manager.git](https://github.com/Hikaru203/project-manager.git)
