@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class CommentService {
 
     private final CommentRepository commentRepository;
+    private final com.projectmanager.audit.service.AuditService auditService;
 
     @Transactional
     public CommentResponse createComment(CreateCommentRequest request) {
@@ -29,7 +30,16 @@ public class CommentService {
                 .authorName(UserContext.getCurrentUsername())
                 .content(request.getContent())
                 .build();
-        return toResponse(commentRepository.save(comment));
+        comment = commentRepository.save(comment);
+        
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("CREATE_COMMENT")
+                .entityType("COMMENT")
+                .entityId(comment.getTaskId())
+                .newValue(Map.of("content", comment.getContent()))
+                .build());
+
+        return toResponse(comment);
     }
 
     public List<CommentResponse> getCommentsByTask(UUID taskId) {
@@ -43,8 +53,19 @@ public class CommentService {
         if (!comment.getAuthorId().equals(UserContext.getCurrentUserId())) {
             throw new ForbiddenException("You can only edit your own comments");
         }
+        String oldContent = comment.getContent();
         comment.setContent(content);
-        return toResponse(commentRepository.save(comment));
+        comment = commentRepository.save(comment);
+
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("UPDATE_COMMENT")
+                .entityType("COMMENT")
+                .entityId(comment.getTaskId())
+                .oldValue(Map.of("content", oldContent))
+                .newValue(Map.of("content", comment.getContent()))
+                .build());
+
+        return toResponse(comment);
     }
 
     @Transactional
@@ -54,6 +75,13 @@ public class CommentService {
             throw new ForbiddenException("You can only delete your own comments");
         }
         commentRepository.delete(comment);
+        
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("DELETE_COMMENT")
+                .entityType("COMMENT")
+                .entityId(comment.getTaskId())
+                .oldValue(Map.of("content", comment.getContent()))
+                .build());
     }
 
     private Comment findComment(UUID commentId) {

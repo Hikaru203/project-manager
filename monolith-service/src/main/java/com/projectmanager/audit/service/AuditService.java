@@ -44,11 +44,32 @@ public class AuditService {
     }
 
     private AuditLogResponse toResponse(AuditLog l) {
+        StringBuilder details = new StringBuilder();
+        details.append(l.getAction().replace("_", " ").toLowerCase());
+        if (l.getEntityType() != null) {
+            details.append(" ").append(l.getEntityType().toLowerCase());
+        }
+        
+        if (l.getOldValue() != null && l.getNewValue() != null) {
+            // For status changes, make it more readable
+            if (l.getOldValue().containsKey("status") && l.getNewValue().containsKey("status")) {
+                details.append(" from ").append(l.getOldValue().get("status"))
+                       .append(" to ").append(l.getNewValue().get("status"));
+            }
+        }
+
         return AuditLogResponse.builder()
-                .id(l.getId()).userId(l.getUserId()).username(l.getUsername())
-                .action(l.getAction()).entityType(l.getEntityType()).entityId(l.getEntityId())
-                .oldValue(l.getOldValue()).newValue(l.getNewValue())
-                .ipAddress(l.getIpAddress()).createdAt(l.getCreatedAt())
+                .id(l.getId())
+                .actorId(l.getUserId())
+                .actorName(l.getUsername())
+                .action(l.getAction())
+                .entityType(l.getEntityType())
+                .entityId(l.getEntityId())
+                .oldValue(l.getOldValue())
+                .newValue(l.getNewValue())
+                .details(details.toString())
+                .ipAddress(l.getIpAddress())
+                .createdAt(l.getCreatedAt())
                 .build();
     }
 }

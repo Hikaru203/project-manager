@@ -10,13 +10,14 @@ import java.util.UUID;
 @Builder
 public class AuditLogResponse {
     private UUID id;
-    private UUID userId;
-    private String username;
+    private UUID actorId;
+    private String actorName;
     private String action;
     private String entityType;
     private UUID entityId;
     private Map<String, Object> oldValue;
     private Map<String, Object> newValue;
+    private String details;
     private String ipAddress;
     private Instant createdAt;
 }

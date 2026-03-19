@@ -19,6 +19,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository memberRepository;
+    private final com.projectmanager.audit.service.AuditService auditService;
 
     @Transactional
     public ProjectResponse createProject(CreateProjectRequest request) {
@@ -51,6 +52,13 @@ public class ProjectService {
                 .build();
         memberRepository.save(ownerMember);
 
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("CREATE_PROJECT")
+                .entityType("PROJECT")
+                .entityId(project.getId())
+                .newValue(Map.of("name", project.getName(), "key", project.getKey()))
+                .build());
+
         return toResponse(project);
     }
 
@@ -72,13 +80,25 @@ public class ProjectService {
         Project project = findProjectInTenant(projectId);
         checkProjectPermission(project, ProjectRole.ADMIN);
 
+        Map<String, Object> oldVal = Map.of("name", project.getName());
+
         if (request.getName() != null) project.setName(request.getName());
         if (request.getDescription() != null) project.setDescription(request.getDescription());
         if (request.getIcon() != null) project.setIcon(request.getIcon());
         if (request.getColor() != null) project.setColor(request.getColor());
         if (request.getStatus() != null) project.setStatus(request.getStatus());
 
-        return toResponse(projectRepository.save(project));
+        project = projectRepository.save(project);
+        
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("UPDATE_PROJECT")
+                .entityType("PROJECT")
+                .entityId(project.getId())
+                .oldValue(oldVal)
+                .newValue(Map.of("name", project.getName()))
+                .build());
+
+        return toResponse(project);
     }
 
     @Transactional
@@ -88,6 +108,13 @@ public class ProjectService {
             throw new ForbiddenException("Only project owner can delete the project");
         }
         projectRepository.delete(project);
+        
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("DELETE_PROJECT")
+                .entityType("PROJECT")
+                .entityId(projectId)
+                .oldValue(Map.of("name", project.getName()))
+                .build());
     }
 
     @Transactional
@@ -107,6 +134,13 @@ public class ProjectService {
                 .build();
         member = memberRepository.save(member);
 
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("ADD_MEMBER")
+                .entityType("PROJECT")
+                .entityId(projectId)
+                .newValue(Map.of("username", member.getUsername(), "role", member.getRole().name()))
+                .build());
+
         return toMemberResponse(member);
     }
 
@@ -120,6 +154,13 @@ public class ProjectService {
         }
 
         memberRepository.deleteByProjectIdAndUserId(projectId, userId);
+        
+        auditService.createLog(com.projectmanager.audit.dto.CreateAuditLogRequest.builder()
+                .action("REMOVE_MEMBER")
+                .entityType("PROJECT")
+                .entityId(projectId)
+                .oldValue(Map.of("userId", userId.toString()))
+                .build());
     }
 
     public List<ProjectResponse.MemberResponse> getMembers(UUID projectId) {

@@ -525,6 +525,7 @@ function ProjectBoardContent() {
                         }}
                       >
                         <option value="BACKLOG">Backlog</option>
+                        <option value="RE_OPEN">Re-open</option>
                         <option value="IN_PROGRESS">In progress</option>
                         <option value="IN_REVIEW">In review</option>
                         <option value="DONE">Done</option>
