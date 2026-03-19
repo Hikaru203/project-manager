@@ -46,6 +46,41 @@ graph TD
     MONO --- DB_P
 ```
 
+### Sơ đồ Dữ liệu (ER Diagram)
+Để hiểu rõ mối quan hệ giữa các thực thể trong hệ thống:
+
+```mermaid
+erDiagram
+    PROJECT ||--o{ TASK : "manages"
+    PROJECT ||--o{ PROJECT_MEMBER : "has"
+    TASK ||--o{ COMMENT : "has"
+    TASK }|--o{ TASK_LABEL : "tagged with"
+    PROJECT_MEMBER ||--|| USER : "links to"
+    AUDIT_LOG }|--|| USER : "performed by"
+    AUDIT_LOG }|--|| TASK : "references"
+```
+
+### Quy trình Thay đổi Trạng thái Task (Sequence)
+Mô tả cách hệ thống xử lý khi người dùng kéo thả hoặc cập nhật trạng thái Task:
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (Next.js)
+    participant BE as Monolith (Spring Boot)
+    participant AU as Audit Module
+    
+    FE->>BE: PATCH /api/v1/tasks/{id}/status (New Status)
+    BE->>BE: Kiểm tra Logic Transition (e.g. DONE -> RE_OPEN)
+    alt Hợp lệ
+        BE->>BE: Cập nhật Database
+        BE->>AU: Ghi log Activity (Action: UPDATE_STATUS)
+        AU-->>AU: Lưu vết actor, thời gian, giá trị cũ/mới
+        BE-->>FE: HTTP 200 OK (Updated Task)
+    else Không hợp lệ
+        BE-->>FE: HTTP 400 Bad Request
+    end
+```
+
 ### Công nghệ sử dụng
 - **Backend**: Spring Boot 3.2, Java 21, Spring Security (JWT RS256).
 - **Frontend**: Next.js 15 (App Router), React 19, Zustand, TailwindCSS, Framer Motion.
@@ -119,6 +154,20 @@ docker-compose up --build
 | `monolith-service/` | Backend hợp nhất (Project, Task, Comment, Notification, Audit). |
 | `common-lib/` | Thư viện dùng chung (JWT Validator, DTOs, Exceptions). |
 | `frontend/` | Giao diện người dùng Next.js hiện đại. |
+
+### Chi tiết Thư mục Backend (Monolith)
+```text
+monolith-service/
+├── src/main/java/com/projectmanager/
+│   ├── project/         # Quản lý Dự án & Member
+│   ├── task/            # Quản lý Task, Status, Labels
+│   ├── comment/         # Trao đổi trong Task
+│   ├── audit/           # Hệ thống Activity Log (Audit)
+│   ├── notification/    # Thông báo (Real-time & DB)
+│   └── common/          # Security, Exception, Base DTOs
+└── src/main/resources/
+    └── db/migration/    # Lịch sử Database (Flyway)
+```
 
 ---
 
