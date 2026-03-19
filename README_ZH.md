@@ -48,6 +48,28 @@ graph TD
     MONO --- DB_P
 ```
 
+### 🔐 为什么需要独立的身份验证服务?
+ProjectFlow 将安全和身份管理卸载到 **SecurityHub**（Auth Service），原因如下：
+
+1.  **安全隔离**: 敏感操作（如 BCrypt 密码哈希和 RS256 私钥签名）被隔离在加固的环境中。
+2.  **无状态扩展**: 通过使用 **RS256 非对称加密**，单体应用可以使用**公钥**验证用户身份，而无需为每个请求查询身份验证服务或数据库。
+3.  **集中式多租户**: 组织（租户）边界在身份级别强制执行，使系统天然具备企业级能力。
+
+#### 身份验证流程图
+```mermaid
+sequenceDiagram
+    participant FE as 前端 (Next.js)
+    participant AS as 身份验证服务 (SecurityHub)
+    participant BE as 单体后端 (ProjectFlow)
+    
+    FE->>AS: 1. 登录请求 (凭据)
+    Note over AS: 验证并签署 JWT
+    AS-->>FE: 2. 身份令牌 (RS256 JWT)
+    FE->>BE: 3. API 请求 (携带 Bearer Token)
+    Note over BE: 使用 RS256 公钥验证签名
+    BE-->>FE: 4. 受保护的资源数据
+```
+
 ### 数据模型 (ER 图)
 了解系统中各实体之间的关系：
 

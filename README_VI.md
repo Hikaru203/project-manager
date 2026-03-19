@@ -48,6 +48,28 @@ graph TD
     MONO --- DB_P
 ```
 
+### 🔐 Tại sao cần Dịch vụ Auth (SecurityHub) riêng biệt?
+ProjectFlow bàn giao việc quản lý bảo mật và định danh cho **SecurityHub** vì những lý do then chốt sau:
+
+1.  **Cô lập Bảo mật**: Các hoạt động nhạy cảm như băm mật khẩu (BCrypt) và ký JWT (Khóa riêng RS256) được cách ly trong một môi trường được bảo mật nghiêm ngặt.
+2.  **Khả năng mở rộng Stateless**: Bằng cách sử dụng **Mã hóa không đối xứng RS256**, Monolith có thể xác minh danh tính người dùng bằng **Khóa công khai** mà không cần truy vấn Dịch vụ Auth hoặc cơ sở dữ liệu cho mỗi yêu cầu.
+3.  **Quản lý Đa người thuê Tập trung**: Các ranh giới tổ chức (Tenant) được thực thi ở cấp độ định danh, giúp hệ thống sẵn sàng cho quy mô doanh nghiệp.
+
+#### Sơ đồ Luồng Xác thực
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (Next.js)
+    participant AS as Dịch vụ Auth (SecurityHub)
+    participant BE as Monolith (ProjectFlow)
+    
+    FE->>AS: 1. Yêu cầu đăng nhập (Credentials)
+    Note over AS: Xác thực & Ký JWT
+    AS-->>FE: 2. Identity Token (RS256 JWT)
+    FE->>BE: 3. Yêu cầu API (với Bearer Token)
+    Note over BE: Xác minh chữ ký bằng Khóa công khai RS256
+    BE-->>FE: 4. Dữ liệu tài nguyên được bảo vệ
+```
+
 ### Mô hình dữ liệu (ER Diagram)
 Hiểu rõ mối quan hệ giữa các thực thể trong hệ thống:
 

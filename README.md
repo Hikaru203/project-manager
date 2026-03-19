@@ -48,6 +48,28 @@ graph TD
     MONO --- DB_P
 ```
 
+### 🔐 Why a Dedicated Auth Service?
+ProjectFlow offloads security and identity management to **SecurityHub** (Auth Service) for several critical reasons:
+
+1.  **Security Isolation**: Sensitive operations like password hashing (BCrypt) and JWT signing (RS256 Private Key) are isolated in a hardened environment.
+2.  **Stateless Scalability**: By using **RS256 Asymmetric Encryption**, the Monolith can verify user identity using a **Public Key** without ever needing to query the Auth Service or a database for every request.
+3.  **Centralized Multi-tenancy**: Organization (Tenant) boundaries are enforced at the identity level, making the system inherently enterprise-ready.
+
+#### Authentication Flow Diagram
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (Next.js)
+    participant AS as Auth Service (SecurityHub)
+    participant BE as Monolith (ProjectFlow)
+    
+    FE->>AS: 1. Login Request (Credentials)
+    Note over AS: Validates & Signs JWT
+    AS-->>FE: 2. Identity Token (RS256 JWT)
+    FE->>BE: 3. API Request (with Bearer Token)
+    Note over BE: Verifies Signature using RS256 Public Key
+    BE-->>FE: 4. Protected Resource Data
+```
+
 ### Data Model (ER Diagram)
 Understand the relationships between entities in the system:
 
