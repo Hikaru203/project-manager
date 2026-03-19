@@ -1,11 +1,13 @@
 package com.projectmanager.audit.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 import lombok.Data;
 import java.util.Map;
 import java.util.UUID;
 
 @Data
+@Builder
 public class CreateAuditLogRequest {
     @NotBlank
     private String action;
