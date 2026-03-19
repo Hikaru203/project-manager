@@ -55,6 +55,14 @@ ProjectFlow offloads security and identity management to **SecurityHub** (Auth S
 2.  **Stateless Scalability**: By using **RS256 Asymmetric Encryption**, the Monolith can verify user identity using a **Public Key** without ever needing to query the Auth Service or a database for every request.
 3.  **Centralized Multi-tenancy**: Organization (Tenant) boundaries are enforced at the identity level, making the system inherently enterprise-ready.
 
+#### The "SecurityHub" Advantage
+| Feature | Traditional Monolith | ProjectFlow + SecurityHub |
+|---|---|---|
+| **Credential Safety** | Stored alongside business data (Higher risk) | **Isolated** in a specialized security vault |
+| **Auth Performance** | Frequent DB queries to verify sessions | **Instant** verification via RS256 local check |
+| **Scalability** | Hard to split auth logic later | **Ready** for microservices architecture |
+| **Audit Fidelity** | Basic application logs | **Immutable** detailed security audit trails |
+
 #### Authentication Flow Diagram
 ```mermaid
 sequenceDiagram

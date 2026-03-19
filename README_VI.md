@@ -55,6 +55,14 @@ ProjectFlow bàn giao việc quản lý bảo mật và định danh cho **Secur
 2.  **Khả năng mở rộng Stateless**: Bằng cách sử dụng **Mã hóa không đối xứng RS256**, Monolith có thể xác minh danh tính người dùng bằng **Khóa công khai** mà không cần truy vấn Dịch vụ Auth hoặc cơ sở dữ liệu cho mỗi yêu cầu.
 3.  **Quản lý Đa người thuê Tập trung**: Các ranh giới tổ chức (Tenant) được thực thi ở cấp độ định danh, giúp hệ thống sẵn sàng cho quy mô doanh nghiệp.
 
+#### Ưu thế từ "SecurityHub"
+| Tính năng | Monolith Truyền thống | ProjectFlow + SecurityHub |
+|---|---|---|
+| **An toàn Mật khẩu** | Lưu chung với dữ liệu nghiệp vụ (Rủi ro cao) | **Cô lập** trong kho bảo mật chuyên dụng |
+| **Hiệu suất Xác thực** | Truy vấn DB liên tục để kiểm tra phiên | **Tức thì** qua xác thực cục bộ RS256 |
+| **Khả năng Mở rộng** | Khó tách rời logic auth sau này | **Sẵn sàng** cho kiến trúc microservices |
+| **Độ tin cậy Audit** | Nhật ký ứng dụng cơ bản | **Bất biến** với nhật ký kiểm toán chi tiết |
+
 #### Sơ đồ Luồng Xác thực
 ```mermaid
 sequenceDiagram
