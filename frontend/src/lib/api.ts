@@ -24,12 +24,33 @@ const authApiInstance = axios.create({
   },
 });
 
+// API Key for Auth Service
+const AUTH_API_KEY = (typeof window !== 'undefined' && (window as any)._env_?.AUTH_API_KEY) || 
+                     process.env.NEXT_PUBLIC_AUTH_API_KEY || 
+                     '4c1543bdcfd182c3e4d59b322df0922e6598dbe0772083a35a977dd5004c1a0a';
+
+/**
+ * Calculates SHA-256 hash of a string using Web Crypto API.
+ * Returns a hex string.
+ */
+async function hashSHA256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // Attach JWT token to every request
 function attachToken(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Skip attaching token for login and refresh to prevent 401 if token is expired
+    const isPublicAuthPath = config.url?.includes('/api/v1/auth/login') || config.url?.includes('/api/v1/auth/refresh');
+    
+    if (!isPublicAuthPath) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
   }
   return config;
@@ -37,6 +58,23 @@ function attachToken(config: InternalAxiosRequestConfig): InternalAxiosRequestCo
 
 api.interceptors.request.use(attachToken as any);
 authApiInstance.interceptors.request.use(attachToken as any);
+
+// Add API Key security to authApiInstance
+authApiInstance.interceptors.request.use(async (config) => {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  
+  // For GET requests, body is empty. For POST/PUT, we could stringify the data.
+  // The backend ApiKeyAuthenticationFilter line 84 is simplified to empty string for body.
+  const body = ""; 
+  
+  const signature = await hashSHA256(AUTH_API_KEY + timestamp + body);
+  
+  config.headers['x-api-key'] = AUTH_API_KEY;
+  config.headers['x-timestamp'] = timestamp;
+  config.headers['x-signature'] = signature;
+  
+  return config;
+}, (error) => Promise.reject(error));
 
 // Handle 401 responses
 api.interceptors.response.use(
