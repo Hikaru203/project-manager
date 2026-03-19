@@ -166,7 +166,35 @@ docker-compose up --build
 1. **Tạo Dự án**: Chọn thư mục `frontend`.
 2. **Biến môi trường**:
    - `NEXT_PUBLIC_AUTH_URL`: `https://pm-auth-service.onrender.com`
+   - `NEXT_PUBLIC_AUTH_URL`: `https://pm-auth-service.onrender.com`
    - `NEXT_PUBLIC_API_URL`: `https://your-monolith-service.onrender.com`
+
+#### C. Máy chủ Riêng (VPS / Dedicated Server)
+Dành cho việc tự lưu trữ hoặc triển khai nội bộ:
+
+1.  **Chuẩn bị Môi trường**: Cài đặt Docker, Docker Compose và Nginx.
+2.  **Cấu hình**:
+    - Cập nhật `docker-compose.yml` với các bí mật (secrets) sản xuất của bạn.
+    - Thiết lập file `.env` cho cả Monolith và Frontend.
+3.  **Khởi tạo**:
+    ```bash
+    docker-compose up -d --build
+    ```
+4.  **Reverse Proxy (Nginx)**: Cấu hình Nginx để điều hướng traffic và xử lý SSL (Certbot):
+    ```nginx
+    server {
+        server_name api.yourdomain.com;
+        location / {
+            proxy_pass http://localhost:8081; # Monolith
+        }
+    }
+    server {
+        server_name app.yourdomain.com;
+        location / {
+            proxy_pass http://localhost:3000; # Frontend
+        }
+    }
+    ```
 
 ---
 

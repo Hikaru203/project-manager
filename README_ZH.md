@@ -166,7 +166,35 @@ docker-compose up --build
 1. **创建项目**: 选择 `frontend` 文件夹。
 2. **环境变量**:
    - `NEXT_PUBLIC_AUTH_URL`: `https://pm-auth-service.onrender.com`
-   - `NEXT_PUBLIC_API_URL`: `https://your-monolith-service.onrender.com`
+    - `NEXT_PUBLIC_AUTH_URL`: `https://pm-auth-service.onrender.com`
+    - `NEXT_PUBLIC_API_URL`: `https://your-monolith-service.onrender.com`
+
+#### C. 自定义服务器 (VPS / 独立服务器)
+适用于私有托管或本地部署：
+
+1.  **环境配置**: 安装 Docker、Docker Compose 和 Nginx。
+2.  **配置步骤**:
+    - 使用生产环境机密更新 `docker-compose.yml`。
+    - 为单体服务和前端设置 `.env` 文件。
+3.  **运行**:
+    ```bash
+    docker-compose up -d --build
+    ```
+4.  **反向代理 (Nginx)**: 配置 Nginx 以路由流量并处理 SSL (Certbot)：
+    ```nginx
+    server {
+        server_name api.yourdomain.com;
+        location / {
+            proxy_pass http://localhost:8081; # 单体服务
+        }
+    }
+    server {
+        server_name app.yourdomain.com;
+        location / {
+            proxy_pass http://localhost:3000; # 前端
+        }
+    }
+    ```
 
 ---
 

@@ -168,6 +168,33 @@ docker-compose up --build
    - `NEXT_PUBLIC_AUTH_URL`: `https://pm-auth-service.onrender.com`
    - `NEXT_PUBLIC_API_URL`: `https://your-monolith-service.onrender.com`
 
+#### C. Custom Server (VPS / Dedicated)
+For private hosting or on-premise deployment:
+
+1.  **Environment Setup**: Install Docker, Docker Compose, and Nginx.
+2.  **Configuration**:
+    - Update `docker-compose.yml` with your production secrets.
+    - Setup your `.env` files for both Monolith and Frontend.
+3.  **Run**:
+    ```bash
+    docker-compose up -d --build
+    ```
+4.  **Reverse Proxy (Nginx)**: Configure Nginx to route traffic and handle SSL (Certbot):
+    ```nginx
+    server {
+        server_name api.yourdomain.com;
+        location / {
+            proxy_pass http://localhost:8081; # Monolith
+        }
+    }
+    server {
+        server_name app.yourdomain.com;
+        location / {
+            proxy_pass http://localhost:3000; # Frontend
+        }
+    }
+    ```
+
 ---
 
 ## 🔐 Important Notes for Deployment
