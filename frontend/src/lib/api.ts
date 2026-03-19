@@ -40,41 +40,51 @@ async function hashSHA256(message: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Attach JWT token to every request
-function attachToken(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
+// Combined Request Interceptor for Auth and Resource instances
+async function requestInterceptor(config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> {
+  const url = config.url || '';
+  const isAuthServiceCall = config.baseURL === AUTH_BASE || url.startsWith(AUTH_BASE);
+  const isPublicAuthPath = url.includes('/api/v1/auth/login') || url.includes('/api/v1/auth/refresh');
+
+  // 1. Handle API Key for Auth Service calls
+  if (isAuthServiceCall) {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const body = ""; // Backend expects empty body for signature currently
+      const signature = await hashSHA256(AUTH_API_KEY + timestamp + body);
+
+      config.headers['x-api-key'] = AUTH_API_KEY;
+      config.headers['x-timestamp'] = timestamp;
+      config.headers['x-signature'] = signature;
+      
+      console.log(`[API] Added API Key headers to ${url}`);
+    } catch (error) {
+      console.error('[API] Failed to generate API Key signature:', error);
+      // Still add the key even if signature fails (better than nothing, or skip?)
+      config.headers['x-api-key'] = AUTH_API_KEY;
+    }
+  }
+
+  // 2. Handle JWT Token
   if (typeof window !== 'undefined') {
-    // Skip attaching token for login and refresh to prevent 401 if token is expired
-    const isPublicAuthPath = config.url?.includes('/api/v1/auth/login') || config.url?.includes('/api/v1/auth/refresh');
-    
+    // Only attach token if NOT a public auth path
     if (!isPublicAuthPath) {
       const token = localStorage.getItem('accessToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+    } else {
+      console.log(`[API] Skipping Authorization header for public path: ${url}`);
+      // Explicitly remove it if it somehow exists
+      delete config.headers.Authorization;
     }
   }
+
   return config;
 }
 
-api.interceptors.request.use(attachToken as any);
-authApiInstance.interceptors.request.use(attachToken as any);
-
-// Add API Key security to authApiInstance
-authApiInstance.interceptors.request.use(async (config) => {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  
-  // For GET requests, body is empty. For POST/PUT, we could stringify the data.
-  // The backend ApiKeyAuthenticationFilter line 84 is simplified to empty string for body.
-  const body = ""; 
-  
-  const signature = await hashSHA256(AUTH_API_KEY + timestamp + body);
-  
-  config.headers['x-api-key'] = AUTH_API_KEY;
-  config.headers['x-timestamp'] = timestamp;
-  config.headers['x-signature'] = signature;
-  
-  return config;
-}, (error) => Promise.reject(error));
+api.interceptors.request.use(requestInterceptor as any);
+authApiInstance.interceptors.request.use(requestInterceptor as any);
 
 // Handle 401 responses
 api.interceptors.response.use(
