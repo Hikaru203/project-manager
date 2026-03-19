@@ -47,11 +47,11 @@ public class Task {
     @Column(name = "creator_name", length = 100)
     private String creatorName;
 
-    @Column(name = "assignee_id")
-    private UUID assigneeId;
-
-    @Column(name = "assignee_name", length = 100)
-    private String assigneeName;
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "task_assignees", joinColumns = @JoinColumn(name = "task_id"))
+    @Column(name = "user_id")
+    @Builder.Default
+    private Set<UUID> assigneeIds = new java.util.HashSet<>();
 
     private Instant deadline;
 

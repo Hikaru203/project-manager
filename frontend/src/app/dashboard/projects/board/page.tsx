@@ -3,11 +3,11 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { DragDropContext, Droppable, Draggable, DropResult, DragStart } from "@hello-pangea/dnd";
-import { Plus, MoreHorizontal, Calendar, Clock, MessageSquare, AlertCircle, ArrowLeft } from "lucide-react";
+import { Plus, MoreHorizontal, Calendar, AlertCircle, ArrowLeft, UserPlus, Search, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { projectApi, taskApi, commentApi } from "@/lib/api";
-import { STATUS_CONFIG, PRIORITY_CONFIG, timeAgo } from "@/lib/utils";
+import { projectApi, taskApi, userApi } from "@/lib/api";
+import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -15,17 +15,30 @@ interface Task {
   description: string;
   status: string;
   priority: string;
-  assigneeName?: string;
+  assigneeIds?: string[];
   deadline?: string;
   position: number;
   labels: { id: string; name: string; color: string }[];
+}
+
+interface ProjectMember {
+  id: string;
+  userId: string;
+  username: string;
+  role: string;
 }
 
 interface Project {
   id: string;
   name: string;
   key: string;
-  members: { id: string; userId: string; username: string }[];
+  members: ProjectMember[];
+}
+
+interface UserSearchResult {
+  id: string;
+  username: string;
+  email: string;
 }
 
 function ProjectBoardContent() {
@@ -41,12 +54,24 @@ function ProjectBoardContent() {
   });
   const [loading, setLoading] = useState(true);
   
-  // task creation modal
+  // Modals
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ title: "", description: "", priority: "MEDIUM", status: "BACKLOG" });
-  
-  // task detail modal
+  const [showMembers, setShowMembers] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Forms
+  const [createForm, setCreateForm] = useState({ 
+    title: "", 
+    description: "", 
+    priority: "MEDIUM", 
+    status: "BACKLOG",
+    assigneeIds: [] as string[]
+  });
+
+  // User Search
+  const [userQuery, setUserQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
 
   // drag state for visual highlights
   const [draggingTaskStatus, setDraggingTaskStatus] = useState<string | null>(null);
@@ -74,6 +99,14 @@ function ProjectBoardContent() {
     }
   }, [projectId]);
 
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (userQuery) searchUsers();
+      else setSearchResults([]);
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [userQuery]);
+
   const loadData = async () => {
     if (!projectId) return;
     try {
@@ -84,21 +117,18 @@ function ProjectBoardContent() {
       setProject(projRes.data?.data);
       
       const allTasks = tasksRes.data?.data || [];
-      const grouped = { BACKLOG: [], IN_PROGRESS: [], IN_REVIEW: [], DONE: [] };
+      const grouped: { [key: string]: Task[] } = { BACKLOG: [], IN_PROGRESS: [], IN_REVIEW: [], DONE: [] };
       allTasks.forEach((t: Task) => {
         let col = t.status;
         if (col === 'TODO') col = 'BACKLOG';
         if (col === 'RE_OPEN') col = 'IN_PROGRESS';
         
-        if (grouped[col as keyof typeof grouped]) {
-          // @ts-ignore
-          grouped[col as keyof typeof grouped].push(t);
+        if (grouped[col]) {
+          grouped[col].push(t);
         }
       });
       
-      // sort by position
       Object.keys(grouped).forEach(k => {
-        // @ts-ignore
         grouped[k].sort((a, b) => a.position - b.position);
       });
       
@@ -108,6 +138,40 @@ function ProjectBoardContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const searchUsers = async () => {
+    setSearching(true);
+    try {
+      const res = await userApi.search(userQuery);
+      // For direct Auth API, results are in .content
+      // For former Proxy API, it was in .data.data
+      setSearchResults(res.data?.content || res.data?.data || []);
+    } catch {} finally { setSearching(false); }
+  };
+
+  const handleAddMember = async (user: UserSearchResult) => {
+    if (!projectId) return;
+    try {
+      await projectApi.addMember(projectId, { 
+        userId: user.id, 
+        username: user.username,
+        role: "MEMBER" 
+      });
+      loadData();
+      setUserQuery("");
+    } catch (e: any) {
+      alert(e.response?.data?.message || "Failed to add member");
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!projectId) return;
+    if (!confirm("Are you sure?")) return;
+    try {
+      await projectApi.removeMember(projectId, userId);
+      loadData();
+    } catch {}
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -120,28 +184,24 @@ function ProjectBoardContent() {
     let targetColId = destination.droppableId;
     let newStatus = targetColId;
 
-    // Frontend validation rules based on backend requirements
     let isValid = false;
     
-    // Allow dragging within the same column (just reordering)
     if (source.droppableId === destination.droppableId) {
        isValid = true;
-       newStatus = sourceStatus; // keep original status
+       newStatus = sourceStatus;
     } else {
        if ((sourceStatus === 'BACKLOG' || sourceStatus === 'TODO') && targetColId === 'IN_PROGRESS') isValid = true;
        if ((sourceStatus === 'IN_PROGRESS' || sourceStatus === 'RE_OPEN') && targetColId === 'IN_REVIEW') isValid = true;
        if (sourceStatus === 'IN_REVIEW' && targetColId === 'DONE') isValid = true;
        
-       // Handle backwards flow (moving to IN_PROGRESS column implies RE_OPEN)
        if ((sourceStatus === 'IN_REVIEW' || sourceStatus === 'DONE' || sourceStatus === 'IN_PROGRESS') && targetColId === 'IN_PROGRESS') {
            isValid = true;
            newStatus = 'RE_OPEN';
        }
     }
 
-    if (!isValid) return; // Discard drop, optimistic UI does not change (snaps back)
+    if (!isValid) return;
 
-    // Optimistic UI update
     const sourceColumn = [...tasks[source.droppableId]];
     const destColumn = source.droppableId === destination.droppableId 
       ? sourceColumn 
@@ -149,7 +209,7 @@ function ProjectBoardContent() {
       
     const [movedTask] = sourceColumn.splice(source.index, 1);
     movedTask.status = newStatus;
-    movedTask.position = destination.index; // simplified position for demo
+    movedTask.position = destination.index;
     
     destColumn.splice(destination.index, 0, movedTask);
     
@@ -165,7 +225,6 @@ function ProjectBoardContent() {
         position: destination.index
       });
     } catch (e) {
-      // Revert on error
       loadData();
     }
   };
@@ -176,31 +235,33 @@ function ProjectBoardContent() {
     try {
       await taskApi.create({ ...createForm, projectId });
       setShowCreate(false);
-      setCreateForm({ title: "", description: "", priority: "MEDIUM", status: "BACKLOG" });
+      setCreateForm({ title: "", description: "", priority: "MEDIUM", status: "BACKLOG", assigneeIds: [] });
       loadData();
     } catch {}
+  };
+
+  const toggleAssignee = (userId: string, isCreate: boolean = true) => {
+    if (isCreate) {
+      setCreateForm(prev => {
+        const ids = prev.assigneeIds.includes(userId) 
+          ? prev.assigneeIds.filter(id => id !== userId) 
+          : [...prev.assigneeIds, userId];
+        return { ...prev, assigneeIds: ids };
+      });
+    } else if (selectedTask) {
+      const currentIds = selectedTask.assigneeIds || [];
+      const newIds = currentIds.includes(userId)
+        ? currentIds.filter(id => id !== userId)
+        : [...currentIds, userId];
+      setSelectedTask({ ...selectedTask, assigneeIds: newIds });
+      taskApi.update(selectedTask.id, { assigneeIds: newIds }).then(() => loadData());
+    }
   };
 
   if (loading) return <div className="p-8 text-center text-gray-400">Loading board...</div>;
   if (!project) return <div className="p-8 text-center text-red-400 font-medium">Project not found</div>;
 
   const columns = ["BACKLOG", "IN_PROGRESS", "IN_REVIEW", "DONE"];
-
-  const COLUMN_LIMITS: Record<string, number | null> = {
-    BACKLOG: 5,
-    RE_OPEN: null,
-    IN_PROGRESS: 3,
-    IN_REVIEW: 5,
-    DONE: null,
-  };
-
-  const COLUMN_SUBTITLES: Record<string, string> = {
-    BACKLOG: "This item hasn't been started",
-    RE_OPEN: "",
-    IN_PROGRESS: "This is actively being worked on",
-    IN_REVIEW: "This item is in review",
-    DONE: "This has been completed",
-  };
 
   return (
     <div className="h-full flex flex-col pt-2 animate-in">
@@ -218,15 +279,19 @@ function ProjectBoardContent() {
             </div>
             <div className="flex items-center gap-2 mt-1 -ml-1">
               <div className="flex -space-x-2 pl-1">
-                {project.members?.slice(0, 3).map(m => (
+                {project.members?.slice(0, 5).map(m => (
                   <div key={m.id} className="w-6 h-6 rounded-full border border-[var(--bg-primary)] flex items-center justify-center text-[10px] bg-slate-700 text-white font-bold" title={m.username}>
                     {m.username.charAt(0).toUpperCase()}
                   </div>
                 ))}
               </div>
-              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                {project.members?.length} members
-              </span>
+              <button 
+                onClick={() => setShowMembers(true)}
+                className="flex items-center gap-1 text-xs hover:underline" 
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {project.members?.length} members <Plus size={12} />
+              </button>
             </div>
           </div>
         </div>
@@ -239,92 +304,57 @@ function ProjectBoardContent() {
 
       <div className="flex-1 pb-4 -mx-6 px-6">
         <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex gap-6 h-full items-start">
+          <div className="flex gap-6 h-full items-start overflow-x-auto pb-4">
             {columns.map(colId => {
               const isInvalidDrop = draggingTaskStatus && !isValidTransition(draggingTaskStatus, colId);
               return (
-              <div key={colId} className={`kanban-column flex flex-col max-h-[calc(100vh-180px)] transition-all duration-300 ${isInvalidDrop ? 'opacity-30 grayscale' : ''}`}>
+              <div key={colId} className={`kanban-column min-w-[300px] flex flex-col max-h-[calc(100vh-180px)] transition-all duration-300 ${isInvalidDrop ? 'opacity-30 grayscale' : ''}`}>
                 <div className="p-4 flex flex-col sticky top-0 z-10" style={{ borderBottom: "1px solid var(--border)", background: "rgba(15,15,35,0.9)", backdropFilter: "blur(8px)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span 
-                        className="w-3 h-3 rounded-full border-2" 
-                        style={{ borderColor: STATUS_CONFIG[colId as keyof typeof STATUS_CONFIG]?.color || '#ffffff' }}
-                      />
+                      <span className="w-3 h-3 rounded-full border-2" style={{ borderColor: STATUS_CONFIG[colId as keyof typeof STATUS_CONFIG]?.color || '#ffffff' }} />
                       <h3 className="font-semibold text-sm">{STATUS_CONFIG[colId as keyof typeof STATUS_CONFIG]?.label || colId}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-xl ${COLUMN_LIMITS[colId] && (tasks[colId]?.length || 0) > COLUMN_LIMITS[colId]! ? 'bg-red-500/20 text-red-500 font-bold' : 'bg-white/10 text-gray-400'}`}>
-                        {COLUMN_LIMITS[colId] ? `${tasks[colId]?.length || 0} / ${COLUMN_LIMITS[colId]}` : (tasks[colId]?.length || 0)}
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-xl border border-white/10 text-gray-400">
-                        Estimate: 0
+                      <span className="text-xs px-2 py-0.5 rounded-xl bg-white/10 text-gray-400">
+                        {tasks[colId]?.length || 0}
                       </span>
                     </div>
-                    <div className="flex text-gray-500">
-                      <button className="p-1 hover:bg-white/10 rounded"><MoreHorizontal size={16} /></button>
-                      <button className="p-1 hover:bg-white/10 rounded" onClick={() => { setCreateForm(f => ({...f, status: colId})); setShowCreate(true); }}>
-                        <Plus size={16} />
-                      </button>
-                    </div>
+                    <button className="p-1 hover:bg-white/10 rounded" onClick={() => { setCreateForm(f => ({...f, status: colId})); setShowCreate(true); }}>
+                      <Plus size={16} />
+                    </button>
                   </div>
-                  {COLUMN_SUBTITLES[colId] && (
-                    <span className="text-xs text-gray-400 mt-2">{COLUMN_SUBTITLES[colId]}</span>
-                  )}
                 </div>
 
                 <Droppable droppableId={colId}>
                   {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="flex-1 p-3 overflow-y-auto space-y-3"
-                      style={{ 
-                        background: snapshot.isDraggingOver ? "rgba(99,102,241,0.05)" : "transparent",
-                        transition: "background 0.2s"
-                      }}
-                    >
+                    <div ref={provided.innerRef} {...provided.droppableProps} className="flex-1 p-3 overflow-y-auto space-y-3" style={{ background: snapshot.isDraggingOver ? "rgba(99,102,241,0.05)" : "transparent" }}>
                       {tasks[colId]?.map((task, index) => (
                         <Draggable key={task.id} draggableId={task.id} index={index}>
                           {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="task-card"
-                              style={{
-                                ...provided.draggableProps.style,
-                                opacity: snapshot.isDragging ? 0.9 : 1,
-                                boxShadow: snapshot.isDragging ? "0 12px 24px rgba(0,0,0,0.5)" : undefined,
-                              }}
-                              onClick={() => setSelectedTask(task)}
-                            >
-                              <div className="flex gap-2 mb-2 items-center">
-                                {task.status === 'RE_OPEN' && (
-                                  <span className="px-1.5 py-0.5 text-[9px] bg-red-500/20 border border-red-500/50 text-red-500 font-bold rounded uppercase">Re-Opened</span>
-                                )}
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="task-card" onClick={() => setSelectedTask(task)}>
+                              <div className="flex gap-2 mb-2">
                                 <div className="flex gap-1">
                                   {task.labels?.map(l => (
-                                    <span key={l.id} className="w-8 h-1.5 rounded-full" style={{ background: l.color }} title={l.name} />
+                                    <span key={l.id} className="w-8 h-1.5 rounded-full" style={{ background: l.color }} />
                                   ))}
                                 </div>
                               </div>
                               <h4 className="font-medium text-sm leading-tight mb-2">{task.title}</h4>
                               <div className="flex items-center justify-between mt-4">
-                                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                                  <span title={PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG].label} style={{ color: PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG].color }}>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <span style={{ color: PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG].color }}>
                                     <AlertCircle size={14} />
                                   </span>
-                                  {task.deadline && (
-                                    <span className="flex items-center gap-1">
-                                      <Calendar size={12} /> {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                    </span>
-                                  )}
+                                  {task.deadline && <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(task.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {task.assigneeName && (
-                                    <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[9px] text-white font-bold" title={task.assigneeName}>
-                                      {task.assigneeName.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
+                                <div className="flex -space-x-1.5">
+                                  {task.assigneeIds?.map(id => {
+                                    const m = project.members.find(member => member.userId === id);
+                                    return (
+                                      <div key={id} className="w-5 h-5 rounded-full bg-indigo-500 border border-slate-900 flex items-center justify-center text-[8px] text-white font-bold" title={m?.username}>
+                                        {m?.username.charAt(0).toUpperCase()}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             </div>
@@ -341,27 +371,107 @@ function ProjectBoardContent() {
         </DragDropContext>
       </div>
 
-      {/* Basic Create Modal */}
+      {/* Members Modal */}
       <AnimatePresence>
+        {showMembers && (
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMembers(false)}>
+            <div className="modal-content max-w-lg" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Project Members</h2>
+                <button onClick={() => setShowMembers(false)}><X size={20} /></button>
+              </div>
+              
+              <div className="relative mb-6">
+                <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
+                <input 
+                  className="input-field pl-10" 
+                  placeholder="Invite user by username or email..." 
+                  value={userQuery} 
+                  onChange={e => setUserQuery(e.target.value)}
+                />
+                <AnimatePresence>
+                  {userQuery && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="absolute w-full mt-1 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50 p-2 overflow-hidden">
+                      {searching ? <div className="p-4 text-center text-sm text-gray-400">Searching...</div> : 
+                       searchResults.length === 0 ? <div className="p-4 text-center text-sm text-gray-400">No users found</div> :
+                       searchResults.map(u => (
+                         <button key={u.id} className="w-full text-left p-3 hover:bg-white/5 rounded flex justify-between items-center group" onClick={() => handleAddMember(u)}>
+                           <div>
+                             <div className="font-medium">{u.username}</div>
+                             <div className="text-xs text-gray-500">{u.email}</div>
+                           </div>
+                           <UserPlus className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" size={18} />
+                         </button>
+                       ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                {project.members.map(m => (
+                  <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold">{m.username.charAt(0).toUpperCase()}</div>
+                      <div>
+                        <div className="text-sm font-medium">{m.username}</div>
+                        <div className="text-xs text-gray-500">{m.role}</div>
+                      </div>
+                    </div>
+                    {m.role !== 'OWNER' && (
+                       <button onClick={() => handleRemoveMember(m.userId)} className="p-2 hover:bg-red-500/20 text-red-400 rounded transition-colors"><X size={16} /></button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Create Task Modal */}
         {showCreate && (
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreate(false)}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <h2 className="text-lg font-bold mb-4">Create Task</h2>
+            <div className="modal-content max-w-xl" onClick={e => e.stopPropagation()}>
+              <h2 className="text-xl font-bold mb-6">Create New Task</h2>
               <form onSubmit={handleCreateTask} className="space-y-4">
                 <input required className="input-field" placeholder="Task Title" value={createForm.title} onChange={e => setCreateForm({...createForm, title: e.target.value})} />
                 <textarea className="input-field" placeholder="Description" rows={3} value={createForm.description} onChange={e => setCreateForm({...createForm, description: e.target.value})} />
+                
+                <div>
+                  <label className="text-xs font-semibold mb-2 block text-gray-400">Assign Members</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {createForm.assigneeIds.map(id => {
+                      const m = project.members.find(member => member.userId === id);
+                      return (
+                        <div key={id} className="bg-indigo-500/20 border border-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md flex items-center gap-2 text-xs">
+                          {m?.username} <button type="button" onClick={() => toggleAssignee(id, true)}><X size={12}/></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-black/20 rounded-lg">
+                    {project.members.map(m => (
+                      <button key={m.userId} type="button" onClick={() => toggleAssignee(m.userId, true)} className={`flex items-center gap-2 p-2 rounded text-xs transition-colors ${createForm.assigneeIds.includes(m.userId) ? 'bg-indigo-600 text-white' : 'hover:bg-white/5'}`}>
+                        <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center font-bold text-[8px]">{m.username.charAt(0).toUpperCase()}</div>
+                        {m.username}
+                        {createForm.assigneeIds.includes(m.userId) && <Check size={12} className="ml-auto" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="text-xs mb-1 block" style={{ color: "var(--text-secondary)" }}>Priority</label>
-                    <select className="input-field w-full h-10" value={createForm.priority} onChange={e => setCreateForm({...createForm, priority: e.target.value})}>
+                    <label className="text-xs mb-1 block text-gray-400">Priority</label>
+                    <select className="input-field w-full" value={createForm.priority} onChange={e => setCreateForm({...createForm, priority: e.target.value})}>
                       <option value="LOW">Low</option>
                       <option value="MEDIUM">Medium</option>
                       <option value="HIGH">High</option>
                     </select>
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs mb-1 block" style={{ color: "var(--text-secondary)" }}>Status</label>
-                    <select className="input-field w-full h-10" value={createForm.status} onChange={e => setCreateForm({...createForm, status: e.target.value})}>
+                    <label className="text-xs mb-1 block text-gray-400">Status</label>
+                    <select className="input-field w-full" value={createForm.status} onChange={e => setCreateForm({...createForm, status: e.target.value})}>
                       <option value="BACKLOG">Backlog</option>
                       <option value="IN_PROGRESS">In progress</option>
                       <option value="IN_REVIEW">In review</option>
@@ -369,39 +479,41 @@ function ProjectBoardContent() {
                     </select>
                   </div>
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-4">
                   <button type="button" className="btn-secondary flex-1" onClick={() => setShowCreate(false)}>Cancel</button>
-                  <button type="submit" className="btn-primary flex-1">Create</button>
+                  <button type="submit" className="btn-primary flex-1">Create Task</button>
                 </div>
               </form>
             </div>
           </motion.div>
         )}
         
+        {/* Task Details Modal */}
         {selectedTask && (
           <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedTask(null)}>
             <div className="modal-content max-w-2xl" onClick={e => e.stopPropagation()}>
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex justify-between mb-6">
                 <div className="flex gap-2">
-                   <span className="text-xs pt-1" style={{ color: "var(--text-secondary)" }}>{project.key}-{selectedTask.id.substring(0,4)}</span>
+                   <span className="text-xs pt-1 text-gray-500">{project.key}-{selectedTask.id.substring(0,4)}</span>
                    <h2 className="text-xl font-bold">{selectedTask.title}</h2>
                 </div>
+                <button onClick={() => setSelectedTask(null)}><X size={20}/></button>
               </div>
-              <div className="flex gap-6">
+              <div className="flex gap-8">
                 <div className="flex-1 space-y-6">
                   <div>
-                    <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>Description</h3>
-                    <p className="text-sm bg-black/20 p-3 rounded-lg min-h-[100px] whitespace-pre-wrap">
+                    <h3 className="text-xs font-semibold mb-2 uppercase tracking-wider text-gray-500">Description</h3>
+                    <p className="text-sm bg-black/20 p-4 rounded-lg min-h-[120px] whitespace-pre-wrap leading-relaxed">
                       {selectedTask.description || "No description provided."}
                     </p>
                   </div>
                 </div>
-                <div className="w-48 space-y-4">
-                  <div className="p-3 bg-black/20 rounded-lg space-y-3">
+                <div className="w-56 space-y-6">
+                  <div className="space-y-4">
                     <div>
-                      <span className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Status</span>
+                      <span className="text-xs uppercase font-bold text-gray-500 block mb-1">Status</span>
                       <select 
-                        className="w-full text-sm font-medium bg-black/40 border border-white/10 rounded px-2 py-1 outline-none" 
+                        className="w-full text-sm font-medium bg-slate-800 border border-white/10 rounded-md px-3 py-2 outline-none focus:border-indigo-500 transition-colors" 
                         value={selectedTask.status} 
                         onChange={async (e) => {
                           const newSt = e.target.value;
@@ -413,24 +525,31 @@ function ProjectBoardContent() {
                         }}
                       >
                         <option value="BACKLOG">Backlog</option>
-                        {selectedTask.status === 'RE_OPEN' && <option value="RE_OPEN">Re-Open</option>}
                         <option value="IN_PROGRESS">In progress</option>
                         <option value="IN_REVIEW">In review</option>
                         <option value="DONE">Done</option>
                       </select>
                     </div>
                     <div>
-                      <span className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Priority</span>
-                      <span className="text-sm font-medium" style={{ color: PRIORITY_CONFIG[selectedTask.priority as keyof typeof PRIORITY_CONFIG].color }}>
+                      <span className="text-xs uppercase font-bold text-gray-500 block mb-1">Priority</span>
+                      <div className="flex items-center gap-2 font-medium" style={{ color: PRIORITY_CONFIG[selectedTask.priority as keyof typeof PRIORITY_CONFIG].color }}>
+                        <AlertCircle size={16} />
                         {PRIORITY_CONFIG[selectedTask.priority as keyof typeof PRIORITY_CONFIG].label}
-                      </span>
+                      </div>
                     </div>
                     <div>
-                      <span className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Assignee</span>
-                      <span className="text-sm">{selectedTask.assigneeName || "Unassigned"}</span>
+                      <span className="text-xs uppercase font-bold text-gray-500 block mb-2">Assignees</span>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {project.members.map(m => (
+                          <button key={m.userId} type="button" onClick={() => toggleAssignee(m.userId, false)} className={`w-full flex items-center gap-2 p-2 rounded text-xs transition-colors ${selectedTask.assigneeIds?.includes(m.userId) ? 'bg-indigo-600/30 border border-indigo-500/50' : 'hover:bg-white/5 border border-transparent'}`}>
+                            <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center font-bold text-[8px]">{m.username.charAt(0).toUpperCase()}</div>
+                            {m.username}
+                            {selectedTask.assigneeIds?.includes(m.userId) && <Check size={12} className="ml-auto text-indigo-400" />}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <button className="btn-secondary w-full" onClick={() => setSelectedTask(null)}>Close</button>
                 </div>
               </div>
             </div>

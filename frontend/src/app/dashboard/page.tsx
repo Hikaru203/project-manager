@@ -50,10 +50,10 @@ export default function DashboardPage() {
           totalStats.TODO += Number(s.TODO || 0);
           totalStats.IN_PROGRESS += Number(s.IN_PROGRESS || 0);
           totalStats.DONE += Number(s.DONE || 0);
-        } catch {}
+        } catch { }
       }
       setStats(totalStats);
-    } catch {}
+    } catch { }
     setLoading(false);
   };
 
@@ -177,7 +177,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * i }}
               >
-                <Link href={`/dashboard/projects/${project.id}`} className="block glass-card p-5">
+                <Link href={`/dashboard/projects/board?id=${project.id}`} className="block glass-card p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white"

@@ -36,8 +36,7 @@ public class TaskService {
                 .priority(TaskPriority.valueOf(request.getPriority()))
                 .creatorId(UserContext.getCurrentUserId())
                 .creatorName(UserContext.getCurrentUsername())
-                .assigneeId(request.getAssigneeId())
-                .assigneeName(request.getAssigneeName())
+                .assigneeIds(request.getAssigneeIds() != null ? new HashSet<>(request.getAssigneeIds()) : new HashSet<>())
                 .deadline(request.getDeadline())
                 .position(position)
                 .build();
@@ -76,9 +75,8 @@ public class TaskService {
             task.setStatus(newStatus);
         }
         if (request.getPriority() != null) task.setPriority(TaskPriority.valueOf(request.getPriority()));
-        if (request.getAssigneeId() != null) {
-            task.setAssigneeId(request.getAssigneeId());
-            task.setAssigneeName(request.getAssigneeName());
+        if (request.getAssigneeIds() != null) {
+            task.setAssigneeIds(new HashSet<>(request.getAssigneeIds()));
         }
         if (request.getDeadline() != null) task.setDeadline(request.getDeadline());
         if (request.getPosition() != null) task.setPosition(request.getPosition());
@@ -140,6 +138,8 @@ public class TaskService {
         labelRepository.deleteById(labelId);
     }
 
+    // -- helpers --
+
     private Task findTask(UUID taskId) {
         UUID tenantId = UserContext.getCurrentTenantId();
         return taskRepository.findByIdAndTenantId(taskId, tenantId)
@@ -172,8 +172,7 @@ public class TaskService {
                 .priority(task.getPriority().name())
                 .creatorId(task.getCreatorId())
                 .creatorName(task.getCreatorName())
-                .assigneeId(task.getAssigneeId())
-                .assigneeName(task.getAssigneeName())
+                .assigneeIds(new HashSet<>(task.getAssigneeIds()))
                 .deadline(task.getDeadline())
                 .position(task.getPosition())
                 .labels(labels)

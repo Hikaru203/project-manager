@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Data
@@ -18,8 +19,7 @@ public class TaskResponse {
     private String priority;
     private UUID creatorId;
     private String creatorName;
-    private UUID assigneeId;
-    private String assigneeName;
+    private Set<UUID> assigneeIds;
     private Instant deadline;
     private int position;
     private List<LabelResponse> labels;

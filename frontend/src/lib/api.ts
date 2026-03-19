@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const AUTH_BASE = (typeof window !== 'undefined' && (window as any)._env_?.AUTH_URL) || 
                   process.env.NEXT_PUBLIC_AUTH_URL || 
@@ -25,7 +25,7 @@ const authApiInstance = axios.create({
 });
 
 // Attach JWT token to every request
-api.interceptors.request.use((config) => {
+function attachToken(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -33,7 +33,10 @@ api.interceptors.request.use((config) => {
     }
   }
   return config;
-});
+}
+
+api.interceptors.request.use(attachToken as any);
+authApiInstance.interceptors.request.use(attachToken as any);
 
 // Handle 401 responses
 api.interceptors.response.use(
@@ -111,7 +114,12 @@ export const auditApi = {
 export const labelApi = {
   list: (projectId: string) => api.get('/api/v1/labels', { params: { projectId } }),
   create: (data: any) => api.post('/api/v1/labels', data),
-  delete: (id: string) => api.delete(`/api/v1/labels/${id}`),
+  delete: (id: string) => api.delete('/api/v1/labels/${id}'),
+};
+
+// Users (Directly from Auth)
+export const userApi = {
+  search: (query: string) => authApiInstance.get('/api/v1/users', { params: { search: query } }),
 };
 
 export default api;

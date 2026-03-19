@@ -20,7 +20,7 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     @Query("SELECT t FROM Task t WHERE t.projectId = :projectId AND t.tenantId = :tenantId " +
            "AND (cast(:status as string) IS NULL OR t.status = :status) " +
-           "AND (cast(:assigneeId as uuid) IS NULL OR t.assigneeId = :assigneeId) " +
+           "AND (cast(:assigneeId as uuid) IS NULL OR :assigneeId MEMBER OF t.assigneeIds) " +
            "AND (cast(:search as string) IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', cast(:search as string), '%')))")
     List<Task> findWithFilters(@Param("projectId") UUID projectId,
                                @Param("tenantId") UUID tenantId,

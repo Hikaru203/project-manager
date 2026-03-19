@@ -12,8 +12,7 @@ public class UpdateTaskRequest {
     private String description;
     private String status;
     private String priority;
-    private UUID assigneeId;
-    private String assigneeName;
+    private List<UUID> assigneeIds;
     private Instant deadline;
     private List<UUID> labelIds;
     private Integer position;

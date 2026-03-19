@@ -17,8 +17,7 @@ public class CreateTaskRequest {
     private String description;
     private String status = "TODO";
     private String priority = "MEDIUM";
-    private UUID assigneeId;
-    private String assigneeName;
+    private List<UUID> assigneeIds;
     private Instant deadline;
     private List<UUID> labelIds;
 }
