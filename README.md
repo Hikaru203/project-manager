@@ -64,13 +64,16 @@ graph TD
 1. **Frontend**:
    ```bash
    cd frontend
+   cp .env.example .env.local # Cấu hình API URLs tại đây
    npm install
    npm run dev
    ```
 2. **Backend (Monolith)**:
    ```bash
+   cd monolith-service
+   cp .env.example .env # Cấu hình Database & Auth API Key tại đây
    mvn clean package -pl monolith-service -am -DskipTests
-   java -jar monolith-service/target/monolith-service-1.0.0.jar
+   java -jar target/monolith-service-1.0.0.jar
    ```
 
 ### 2. Chạy bằng Docker
